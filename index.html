@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Permainan Cari Kata - Berbilang Pemain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Sembunyikan scrollbar untuk paparan tab */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Halang user dari zoom atau highlight text semasa bermain (touch support) */
+        .touch-none { touch-action: none; user-select: none; -webkit-user-select: none; }
+        
+        /* Pastikan paparan kekal 16:9 tidak kira saiz skrin */
+        .ratio-16-9 {
+            width: min(100vw, 177.78vh);
+            height: min(56.25vw, 100vh);
+            margin: auto;
+        }
+
+        body { overscroll-behavior-y: contain; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-black text-slate-100 overflow-hidden h-screen w-screen flex items-center justify-center select-none touch-none">
+
+    <!-- APP CONTAINER (Kekal 16:9) -->
+    <div id="app" class="ratio-16-9 bg-slate-800 flex flex-col relative shadow-2xl overflow-hidden">
+        
+        <!-- ==================== SKRIN PERSEDIAAN (SETUP) ==================== -->
+        <div id="setup-screen" class="absolute inset-0 z-50 bg-indigo-50 flex items-center justify-center p-4 text-slate-800 overflow-y-auto">
+            <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-200 my-auto">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl font-black text-indigo-700 tracking-tight">CARI KATA</h1>
+                    <p class="text-sm font-semibold text-slate-500 uppercase tracking-widest mt-2">Cabaran Berbilang Pemain</p>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- Tahap Permainan -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Tahap Permainan:</label>
+                        <div class="flex gap-2" id="difficulty-btns">
+                            <button data-val="mudah" class="flex-1 py-3 rounded-lg font-bold transition-all border-2 bg-indigo-100 border-indigo-500 text-indigo-700">Mudah (Lurus)</button>
+                            <button data-val="sederhana" class="flex-1 py-3 rounded-lg font-bold transition-all border-2 bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100">Sederhana (Silang)</button>
+                        </div>
+                    </div>
+
+                    <!-- Bilangan Pemain -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Bilangan Pemain:</label>
+                        <div class="flex gap-2" id="player-num-btns">
+                            <button data-val="1" class="flex-1 py-2 rounded-lg font-bold transition-colors bg-indigo-600 text-white shadow-md">1 Orang</button>
+                            <button data-val="2" class="flex-1 py-2 rounded-lg font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">2 Orang</button>
+                            <button data-val="3" class="flex-1 py-2 rounded-lg font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">3 Orang</button>
+                            <button data-val="4" class="flex-1 py-2 rounded-lg font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">4 Orang</button>
+                        </div>
+                    </div>
+
+                    <!-- Nama Pemain -->
+                    <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100" id="player-inputs-container">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Nama Pemain:</label>
+                        <!-- Inputs generated via JS -->
+                    </div>
+
+                    <button id="start-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 text-lg">
+                        MULA BERMAIN!
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SKRIN PERMAINAN (GAME) ==================== -->
+        <div id="game-screen" class="hidden h-full flex-col flex-1">
+            
+            <!-- Header -->
+            <div class="bg-slate-900 border-b border-slate-700 px-4 py-3 flex items-center justify-between shrink-0 shadow-md relative z-10">
+                <div class="flex flex-col">
+                    <span id="header-title" class="text-xl font-bold text-white tracking-wide">Cabaran</span>
+                    <span class="text-xs text-slate-400">Markah: 10/perkataan + Bonus Masa</span>
+                </div>
+                
+                <!-- Timer -->
+                <div id="timer-box" class="flex flex-col items-center px-6 py-1 rounded-lg border-2 bg-slate-800 border-indigo-500 transition-colors duration-300">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-0.5">Masa Pusingan</span>
+                    <span id="timer-text" class="text-3xl font-black font-mono leading-none text-indigo-300 transition-colors duration-300">5:00</span>
+                </div>
+
+                <button id="exit-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm font-bold transition-colors">
+                    Tamat
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <div id="tabs-container" class="flex overflow-x-auto bg-slate-800 border-b border-slate-700 scrollbar-hide shrink-0 shadow-sm relative z-0">
+                <!-- Tabs generated via JS -->
+            </div>
+
+            <!-- Main Play Area -->
+            <div class="flex-1 overflow-y-auto p-2 sm:p-4 bg-slate-800 relative">
+                
+                <!-- Game Over Modal -->
+                <div id="game-over-modal" class="hidden absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+                    <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl scale-100">
+                        <h2 class="text-3xl font-black text-slate-800 mb-2">Masa Tamat! ⏱️</h2>
+                        <p class="text-slate-500 mb-6 font-medium">Keputusan Pusingan Ini:</p>
+                        <div id="leaderboard" class="space-y-3 mb-6"></div>
+                        <p class="text-sm text-slate-500 mb-6">Pilih Soalan / Tema di atas untuk terus bermain!</p>
+                        <button id="close-modal-btn" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Teruskan</button>
+                    </div>
+                </div>
+
+                <!-- Split Screen Boards -->
+                <div id="boards-container" class="grid gap-2 sm:gap-4 h-full">
+                    <!-- Player Boards generated via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT ==================== -->
+    <script>
+        // --- CONSTANTS & DATA ---
+        const THEMES = [
+            { id: 1, name: "Haiwan", words: ["KUCING", "ANJING", "BURUNG", "IKAN", "GAJAH"] },
+            { id: 2, name: "Buah", words: ["EPAL", "OREN", "PISANG", "BETIK", "MANGGA"] },
+            { id: 3, name: "Warna", words: ["MERAH", "BIRU", "HIJAU", "KUNING", "HITAM"] },
+            { id: 4, name: "Sukan", words: ["BOLA", "RENANG", "LARI", "HOKI", "TENIS"] },
+            { id: 5, name: "Kenderaan", words: ["KERETA", "BAS", "LORI", "KAPAL", "BASIKAL"] },
+            { id: 6, name: "Pekerjaan", words: ["GURU", "DOKTOR", "POLIS", "BOMBA", "HAKIM"] },
+            { id: 7, name: "Negara", words: ["JEPUN", "KOREA", "CHINA", "INDIA", "MESIR"] },
+            { id: 8, name: "Muzik", words: ["GITAR", "PIANO", "DRUM", "BIOLA", "SULING"] },
+            { id: 9, name: "Angkasa", words: ["BULAN", "BUMI", "BINTANG", "KOMET", "ROKET"] },
+            { id: 10, name: "Komputer", words: ["TETIKUS", "PAPAN", "SKRIN", "WAYAR", "DATA"] }
+        ];
+
+        const LEVEL_CONFIG = {
+            mudah: { name: 'Mudah', size: 9, dirs: ['H', 'V'] },
+            sederhana: { name: 'Sederhana', size: 10, dirs: ['H', 'V'] } // Ditukar kepada Melintang & Menegak Sahaja
+        };
+
+        const DIRS = {
+            'H': [0, 1], 'V': [1, 0], 'D': [1, 1],
+            'HR': [0, -1], 'VR': [-1, 0], 'DR': [-1, -1]
+        };
+
+        const PLAYER_COLORS = [
+            { bg: 'bg-green-500', text: 'text-white', lightBg: 'bg-green-100', border: 'border-green-400', color: 'green' },
+            { bg: 'bg-blue-500', text: 'text-white', lightBg: 'bg-blue-100', border: 'border-blue-400', color: 'blue' },
+            { bg: 'bg-purple-500', text: 'text-white', lightBg: 'bg-purple-100', border: 'border-purple-400', color: 'purple' },
+            { bg: 'bg-orange-500', text: 'text-white', lightBg: 'bg-orange-100', border: 'border-orange-400', color: 'orange' },
+        ];
+
+        // --- GLOBAL STATE ---
+        let state = {
+            numPlayers: 1,
+            difficulty: 'mudah',
+            playerNames: ['Pemain 1', '', '', ''],
+            players: [], // Player objects
+            activeTab: 0,
+            masterGrid: [],
+            wordsToFind: [],
+            timeLeft: 300,
+            timerId: null,
+            isGameOver: false,
+            completedCount: 0
+        };
+
+        // --- DOM ELEMENTS ---
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const diffBtns = document.querySelectorAll('#difficulty-btns button');
+        const numBtns = document.querySelectorAll('#player-num-btns button');
+        const playerInputsContainer = document.getElementById('player-inputs-container');
+        const startBtn = document.getElementById('start-btn');
+        const exitBtn = document.getElementById('exit-btn');
+        const tabsContainer = document.getElementById('tabs-container');
+        const boardsContainer = document.getElementById('boards-container');
+        const headerTitle = document.getElementById('header-title');
+        const timerText = document.getElementById('timer-text');
+        const timerBox = document.getElementById('timer-box');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const leaderboard = document.getElementById('leaderboard');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // --- SETUP LOGIC ---
+        function renderPlayerInputs() {
+            playerInputsContainer.innerHTML = `<label class="block text-sm font-bold text-slate-700 mb-1">Nama Pemain:</label>`;
+            for (let i = 0; i < state.numPlayers; i++) {
+                const color = PLAYER_COLORS[i].bg;
+                const div = document.createElement('div');
+                div.className = "flex items-center gap-3 mt-3";
+                div.innerHTML = `
+                    <div class="w-6 h-6 rounded-md shadow-sm ${color}"></div>
+                    <input type="text" placeholder="Pemain ${i + 1}" value="${state.playerNames[i]}" data-idx="${i}" 
+                           class="player-name-input flex-1 p-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium" maxlength="15">
+                `;
+                playerInputsContainer.appendChild(div);
+            }
+            
+            document.querySelectorAll('.player-name-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.idx);
+                    state.playerNames[idx] = e.target.value;
+                });
+            });
+        }
+
+        diffBtns.forEach(btn => btn.addEventListener('click', (e) => {
+            state.difficulty = e.target.dataset.val;
+            diffBtns.forEach(b => {
+                b.className = b.dataset.val === state.difficulty 
+                    ? "flex-1 py-3 rounded-lg font-bold transition-all border-2 bg-indigo-100 border-indigo-500 text-indigo-700" 
+                    : "flex-1 py-3 rounded-lg font-bold transition-all border-2 bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100";
+            });
+        }));
+
+        numBtns.forEach(btn => btn.addEventListener('click', (e) => {
+            state.numPlayers = parseInt(e.target.dataset.val);
+            numBtns.forEach(b => {
+                b.className = parseInt(b.dataset.val) === state.numPlayers 
+                    ? "flex-1 py-2 rounded-lg font-bold transition-colors bg-indigo-600 text-white shadow-md" 
+                    : "flex-1 py-2 rounded-lg font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200";
+            });
+            renderPlayerInputs();
+        }));
+
+        startBtn.addEventListener('click', () => {
+            state.players = [];
+            for (let i = 0; i < state.numPlayers; i++) {
+                state.players.push({
+                    id: i,
+                    name: state.playerNames[i] || `Pemain ${i + 1}`,
+                    score: 0,
+                    color: PLAYER_COLORS[i],
+                    foundWords: [],
+                    foundCells: [],
+                    finished: false,
+                    selection: { active: false, start: null, current: [] }
+                });
+            }
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+            
+            setupTabs();
+            loadTheme(0);
+        });
+
+        exitBtn.addEventListener('click', () => {
+            clearInterval(state.timerId);
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex');
+            setupScreen.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            gameOverModal.classList.add('hidden');
+        });
+
+        // --- GAME LOGIC ---
+        function setupTabs() {
+            tabsContainer.innerHTML = '';
+            THEMES.forEach((theme, index) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn flex-shrink-0 px-6 py-3 text-sm font-bold transition-all ${state.activeTab === index ? 'bg-indigo-600 text-white shadow-[inset_0_-3px_0_rgba(255,255,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`;
+                btn.innerText = `Soalan #${index + 1}: ${theme.name}`;
+                btn.onclick = () => loadTheme(index);
+                tabsContainer.appendChild(btn);
+            });
+        }
+
+        function loadTheme(tabIndex) {
+            state.activeTab = tabIndex;
+            document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                btn.className = `tab-btn flex-shrink-0 px-6 py-3 text-sm font-bold transition-all ${idx === tabIndex ? 'bg-indigo-600 text-white shadow-[inset_0_-3px_0_rgba(255,255,255,0.4)]' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`;
+            });
+
+            const theme = THEMES[tabIndex];
+            const config = LEVEL_CONFIG[state.difficulty];
+            const size = config.size;
+            
+            headerTitle.innerText = `Tahap ${config.name}`;
+            
+            // Generate Grid
+            let newGrid = Array(size).fill(null).map(() => Array(size).fill(''));
+            
+            theme.words.forEach(word => {
+                let placed = false;
+                for (let i = 0; i < 200 && !placed; i++) {
+                    const dirKey = config.dirs[Math.floor(Math.random() * config.dirs.length)];
+                    const [dr, dc] = DIRS[dirKey];
+                    const r = Math.floor(Math.random() * size);
+                    const c = Math.floor(Math.random() * size);
+                    const endR = r + dr * (word.length - 1);
+                    const endC = c + dc * (word.length - 1);
+                    
+                    if (endR < 0 || endR >= size || endC < 0 || endC >= size) continue;
+
+                    let canPlace = true;
+                    for (let j = 0; j < word.length; j++) {
+                        if (newGrid[r + dr * j][c + dc * j] !== '' && newGrid[r + dr * j][c + dc * j] !== word[j]) {
+                            canPlace = false; break;
+                        }
+                    }
+                    if (canPlace) {
+                        for (let j = 0; j < word.length; j++) newGrid[r + dr * j][c + dc * j] = word[j];
+                        placed = true;
+                    }
+                }
+            });
+
+            const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (newGrid[r][c] === '') newGrid[r][c] = alphabet[Math.floor(Math.random() * alphabet.length)];
+                }
+            }
+
+            state.masterGrid = newGrid;
+            state.wordsToFind = theme.words;
+            
+            // Reset player progress for new tab
+            state.players.forEach(p => {
+                p.foundWords = [];
+                p.foundCells = [];
+                p.finished = false;
+                p.selection = { active: false, start: null, current: [] };
+            });
+            state.completedCount = 0;
+            state.isGameOver = false;
+            gameOverModal.classList.add('hidden');
+            
+            renderBoards();
+            startTimer();
+        }
+
+        // --- RENDER BOARDS ---
+        function renderBoards() {
+            boardsContainer.className = `grid gap-2 sm:gap-4 h-full w-full ${state.numPlayers > 2 ? 'grid-cols-2' : (state.numPlayers === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}`;
+            boardsContainer.innerHTML = '';
+            
+            state.players.forEach(player => {
+                boardsContainer.appendChild(createPlayerBoard(player));
+            });
+        }
+
+        function createPlayerBoard(player) {
+            const size = state.masterGrid.length;
+            const wrapper = document.createElement('div');
+            wrapper.className = `player-board flex flex-col bg-white rounded-xl shadow-md border-2 ${player.color.border} overflow-hidden touch-none`;
+            wrapper.dataset.pid = player.id;
+            
+            let cellSize = "w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 text-sm sm:text-lg md:text-xl";
+            if (state.numPlayers > 2) cellSize = "w-5 h-5 sm:w-7 sm:h-7 md:w-9 md:h-9 text-xs sm:text-sm md:text-lg";
+            else if (state.numPlayers === 2) cellSize = "w-6 h-6 sm:w-9 sm:h-9 md:w-11 md:h-11 text-xs sm:text-base md:text-xl";
+
+            let innerHTML = `
+                <div class="${player.color.bg} ${player.color.text} py-2 px-3 flex justify-between items-center shrink-0">
+                    <span class="font-bold truncate text-sm sm:text-base">${player.name}</span>
+                    <div class="flex gap-2 text-xs sm:text-sm">
+                        <span class="font-semibold score-display">${player.score} Markah</span>
+                        <span class="bg-black/20 px-2 rounded-full word-count">${player.foundWords.length}/${state.wordsToFind.length}</span>
+                    </div>
+                </div>
+                <div class="board-body flex-1 p-2 sm:p-4 flex flex-row items-center justify-center bg-slate-50 overflow-hidden relative gap-2 sm:gap-6">
+                    
+                    <!-- Grid Cari Kata (Kiri) -->
+                    <div class="flex-shrink-0">
+                        <div class="grid gap-0.5 sm:gap-1 mx-auto grid-container" style="grid-template-columns: repeat(${size}, minmax(0, 1fr))">
+            `;
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    innerHTML += `<div data-pid="${player.id}" data-r="${r}" data-c="${c}" class="grid-cell ${cellSize} flex items-center justify-center font-bold rounded cursor-pointer transition-colors duration-100 bg-white text-slate-700 border border-slate-200 select-none">${state.masterGrid[r][c]}</div>`;
+                }
+            }
+
+            innerHTML += `
+                        </div>
+                    </div>
+                    
+                    <!-- Senarai Perkataan (Kanan) -->
+                    <div class="flex-1 flex flex-col border-l-2 border-slate-200 pl-2 sm:pl-4 md:pl-6 h-full justify-center min-w-[80px] max-w-[160px]">
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-500 mb-2 tracking-wider uppercase text-left">Cari:</span>
+                        <div class="word-list flex flex-col gap-1.5 sm:gap-2">
+                            ${state.wordsToFind.map(w => `<span data-word="${w}" class="px-2 py-1 rounded text-[10px] sm:text-xs md:text-sm font-bold transition-all bg-slate-200 text-slate-600 text-center w-full truncate relative decoration-2">${w}</span>`).join('')}
+                        </div>
+                    </div>
+
+                </div>
+            `;
+            wrapper.innerHTML = innerHTML;
+            return wrapper;
+        }
+
+        // --- TIMER LOGIC ---
+        function formatTime(sec) {
+            return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
+        }
+
+        function startTimer() {
+            clearInterval(state.timerId);
+            state.timeLeft = 300;
+            updateTimerUI();
+            
+            state.timerId = setInterval(() => {
+                if (state.isGameOver) return;
+                state.timeLeft--;
+                updateTimerUI();
+                
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timerId);
+                    triggerGameOver();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            timerText.innerText = formatTime(state.timeLeft);
+            if (state.timeLeft < 30) {
+                timerBox.classList.remove('bg-slate-800', 'border-indigo-500');
+                timerBox.classList.add('bg-red-900/50', 'border-red-500', 'animate-pulse');
+                timerText.classList.remove('text-indigo-300');
+                timerText.classList.add('text-red-400');
+            } else {
+                timerBox.classList.add('bg-slate-800', 'border-indigo-500');
+                timerBox.classList.remove('bg-red-900/50', 'border-red-500', 'animate-pulse');
+                timerText.classList.add('text-indigo-300');
+                timerText.classList.remove('text-red-400');
+            }
+        }
+
+        // --- INTERACTION LOGIC (MULTI-TOUCH SUPPORT) ---
+        function getLine(r1, c1, r2, c2) {
+            let path = [];
+            let dr = r2 - r1, dc = c2 - c1;
+            let steps = Math.max(Math.abs(dr), Math.abs(dc));
+            
+            if (steps === 0) return [{ r: r1, c: c1 }];
+            if (Math.abs(dr) !== 0 && Math.abs(dc) !== 0 && Math.abs(dr) !== Math.abs(dc)) return [];
+
+            let rStep = dr === 0 ? 0 : dr / Math.abs(dr);
+            let cStep = dc === 0 ? 0 : dc / Math.abs(dc);
+
+            for (let i = 0; i <= steps; i++) path.push({ r: r1 + i * rStep, c: c1 + i * cStep });
+            return path;
+        }
+
+        function updateBoardVisuals(pid) {
+            const player = state.players[pid];
+            const boardEl = document.querySelector(`.player-board[data-pid="${pid}"]`);
+            if (!boardEl) return;
+            
+            const cells = boardEl.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                const r = parseInt(cell.dataset.r);
+                const c = parseInt(cell.dataset.c);
+                const isSelected = player.selection.current.some(pt => pt.r === r && pt.c === c);
+                const isFound = player.foundCells.includes(`${r},${c}`);
+                
+                cell.className = cell.className.replace(/bg-\S+|text-\S+|shadow-\S+|border-\S+|opacity-\S+/g, '').trim();
+                
+                if (isSelected) {
+                    cell.className += " bg-slate-600 text-white shadow-inner";
+                } else if (isFound) {
+                    cell.className += ` ${player.color.bg} text-white shadow-inner opacity-90`;
+                } else {
+                    cell.className += " bg-white text-slate-700 border border-slate-200";
+                }
+            });
+        }
+
+        function processPointerDown(pid, r, c) {
+            const p = state.players[pid];
+            if (p.finished || state.isGameOver) return;
+            p.selection.active = true;
+            p.selection.start = {r, c};
+            p.selection.current = [{r, c}];
+            updateBoardVisuals(pid);
+        }
+
+        function processPointerMove(pid, r, c) {
+            const p = state.players[pid];
+            if (!p.selection.active || p.finished || state.isGameOver) return;
+            p.selection.current = getLine(p.selection.start.r, p.selection.start.c, r, c);
+            updateBoardVisuals(pid);
+        }
+
+        function processPointerUp(pid) {
+            const p = state.players[pid];
+            if (!p.selection.active || p.finished || state.isGameOver) return;
+            p.selection.active = false;
+            
+            if (p.selection.current.length > 0) {
+                const selectedWord = p.selection.current.map(pt => state.masterGrid[pt.r][pt.c]).join('');
+                const reversedWord = selectedWord.split('').reverse().join('');
+                let matched = null;
+                
+                if (state.wordsToFind.includes(selectedWord) && !p.foundWords.includes(selectedWord)) matched = selectedWord;
+                else if (state.wordsToFind.includes(reversedWord) && !p.foundWords.includes(reversedWord)) matched = reversedWord;
+
+                if (matched) {
+                    p.foundWords.push(matched);
+                    p.selection.current.forEach(pt => p.foundCells.push(`${pt.r},${pt.c}`));
+                    p.score += 10;
+                    
+                    // Update specific board UI elements safely
+                    const boardEl = document.querySelector(`.player-board[data-pid="${pid}"]`);
+                    if(boardEl) {
+                        boardEl.querySelector('.score-display').innerText = `${p.score} Markah`;
+                        boardEl.querySelector('.word-count').innerText = `${p.foundWords.length}/${state.wordsToFind.length}`;
+                        const wordSpan = boardEl.querySelector(`span[data-word="${matched}"]`);
+                        if(wordSpan) {
+                            wordSpan.className = wordSpan.className.replace('bg-slate-200 text-slate-600', `${p.color.bg} text-white line-through opacity-70`);
+                        }
+                    }
+                    
+                    if (p.foundWords.length === state.wordsToFind.length) {
+                        p.finished = true;
+                        p.score += state.timeLeft; // Time bonus
+                        if(boardEl) boardEl.querySelector('.score-display').innerText = `${p.score} Markah`;
+                        showFinishedOverlay(pid);
+                        
+                        state.completedCount++;
+                        if (state.completedCount === state.numPlayers) triggerGameOver();
+                    }
+                }
+            }
+            p.selection.current = [];
+            p.selection.start = null;
+            updateBoardVisuals(pid);
+        }
+
+        function showFinishedOverlay(pid) {
+            const p = state.players[pid];
+            const boardEl = document.querySelector(`.player-board[data-pid="${pid}"]`);
+            if(!boardEl) return;
+            const body = boardEl.querySelector('.board-body');
+            body.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full space-y-2 py-8 animate-pulse">
+                    <span class="text-5xl">🎉</span>
+                    <span class="font-bold text-2xl text-${p.color.color}-700">Selesai!</span>
+                </div>
+            `;
+            body.className = body.className.replace('bg-slate-50', p.color.lightBg);
+        }
+
+        function triggerGameOver() {
+            state.isGameOver = true;
+            clearInterval(state.timerId);
+            
+            const sorted = [...state.players].sort((a, b) => b.score - a.score);
+            leaderboard.innerHTML = sorted.map((p, idx) => `
+                <div class="flex items-center justify-between p-3 rounded-lg border ${idx === 0 ? 'bg-yellow-50 border-yellow-300 ring-2 ring-yellow-400 ring-opacity-50' : 'bg-slate-50 border-slate-200'}">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl font-bold w-6">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : ' '}</span>
+                        <span class="font-bold text-slate-700">${p.name}</span>
+                    </div>
+                    <span class="text-lg font-black text-indigo-600">${p.score} pt</span>
+                </div>
+            `).join('');
+            
+            gameOverModal.classList.remove('hidden');
+        }
+
+        // --- EVENT LISTENERS (MOUSE & TOUCH) ---
+        // Mouse Events
+        boardsContainer.addEventListener('mousedown', e => {
+            const cell = e.target.closest('.grid-cell');
+            if (cell) processPointerDown(parseInt(cell.dataset.pid), parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+        });
+        boardsContainer.addEventListener('mouseover', e => {
+            if (e.buttons !== 1) return; // Only if mouse is dragged
+            const cell = e.target.closest('.grid-cell');
+            if (cell) processPointerMove(parseInt(cell.dataset.pid), parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+        });
+        document.addEventListener('mouseup', () => {
+            for(let i=0; i<state.numPlayers; i++) processPointerUp(i);
+        });
+
+        // Touch Events (Multi-touch Support)
+        boardsContainer.addEventListener('touchstart', e => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.grid-cell');
+                if (cell) processPointerDown(parseInt(cell.dataset.pid), parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+            }
+        }, {passive: false});
+
+        boardsContainer.addEventListener('touchmove', e => {
+            e.preventDefault(); // Prevent scrolling while playing
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const cell = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.grid-cell');
+                if (cell) {
+                    const pid = parseInt(cell.dataset.pid);
+                    const p = state.players[pid];
+                    if (p.selection.active) processPointerMove(pid, parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+                }
+            }
+        }, {passive: false});
+
+        boardsContainer.addEventListener('touchend', e => {
+            // We evaluate all active touches and release any board that doesn't have a finger on it
+            // Simplified: just trigger up for players that have an active selection 
+            // In a robust app we'd track touch IDs per player, but this works well enough
+            for (let i = 0; i < state.numPlayers; i++) processPointerUp(i);
+        });
+
+        // Init Setup UI on load
+        renderPlayerInputs();
+
+    </script>
+</body>
+</html>
